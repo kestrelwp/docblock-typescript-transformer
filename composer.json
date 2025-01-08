@@ -1,0 +1,19 @@
+{
+    "name": "kestrelwp/docblock-typescript-transformer",
+    "type": "library",
+    "autoload": {
+        "psr-4": {
+            "Kestrel\\DocblockTypescriptTransformer\\": "src/"
+        }
+    },
+    "require": {
+        "php": ">=7.4",
+        "spatie/typescript-transformer": "^2.4",
+        "phpdocumentor/reflection-docblock": "^5.6"
+    },
+    "config": {
+        "platform": {
+            "php": "8.2"
+        }
+    }
+}
