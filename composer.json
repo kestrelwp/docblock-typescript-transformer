@@ -1,13 +1,14 @@
 {
     "name": "kestrelwp/docblock-typescript-transformer",
     "type": "library",
+    "license": "MIT",
     "autoload": {
         "psr-4": {
             "Kestrel\\DocblockTypescriptTransformer\\": "src/"
         }
     },
     "require": {
-        "php": ">=7.4",
+        "php": "^8.0",
         "spatie/typescript-transformer": "^2.4",
         "phpdocumentor/reflection-docblock": "^5.6"
     },
