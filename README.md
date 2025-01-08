@@ -1,5 +1,7 @@
 A package to transform PHP DocBlock class property annotations to TypeScript interfaces.
 
+Provides a transformer for the [Spatie TypeScript Transformer](https://github.com/spatie/typescript-transformer/) package.
+
 ## Usage
 
 ```php
