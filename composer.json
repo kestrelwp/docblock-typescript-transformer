@@ -1,5 +1,6 @@
 {
     "name": "kestrelwp/docblock-typescript-transformer",
+    "description": "Transform PHP class DocBlocks to TypeScript types.",
     "type": "library",
     "license": "MIT",
     "autoload": {
