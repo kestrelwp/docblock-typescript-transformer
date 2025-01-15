@@ -30,6 +30,8 @@ In a PHP class, use `@property` and the `@typescript` annotations to ensure Type
  * @property ProductCategory[] $categories
  * @property array<string, mixed> $metadata {@ts-optional}
  * @property array<string, mixed> $internal_metadata {@ts-hidden}
+ * @property array<string, Brand> $brand_map {@ts-record string, Brand}
+ * @property float $price {@ts-literal number}
  *
  * @typescript
  */
@@ -60,7 +62,27 @@ export type Release = {
 	brand: Brand;
 	categories: ProductCategory[];
 	metadata?: { [key: string]: any };
+	brand_map: Record<string, Brand>
+	price: number
 }
 export type Brand = "apple" | "samsung" | "google";
 export type ProductCategory = "phone" | "tablet" | "laptop" | "widget";
 ```
+
+## Special tags
+
+### `@ts-optional`
+
+Marks the property as optional in TypeScript.
+
+### `@ts-hidden`
+
+Hides the property from the TypeScript interface.
+
+### `@ts-record`
+
+Generates a `Record` type in TypeScript. The first argument is the key type, the second argument is the value type.
+
+### `@ts-literal`
+
+Generates a literal type in TypeScript. The argument is the literal type, exactly as it should appear in TypeScript.

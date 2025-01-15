@@ -17,6 +17,7 @@ use ReflectionParameter;
 use Spatie\TypeScriptTransformer\Structures\MissingSymbolsCollection;
 use Spatie\TypeScriptTransformer\Transformers\DtoTransformer;
 use Spatie\TypeScriptTransformer\TypeProcessors\TypeProcessor;
+use Spatie\TypeScriptTransformer\Types\TypeScriptType;
 use Spatie\TypeScriptTransformer\TypeScriptTransformerConfig;
 use Spatie\TypeScriptTransformer\Types\RecordType;
 
@@ -137,6 +138,10 @@ class ClassDocBlockTransformer extends DtoTransformer
 		foreach ( $description->getTags() as $tag ) {
 			if ( $tag instanceof TypeScriptRecordTag ) {
 				$type = new RecordType( $tag->getKeyType(), $tag->getValueType() );
+			}
+
+			if ( $tag->getName() === 'ts-literal' ) {
+				$type = new TypeScriptType( $tag->getDescription()->render() );
 			}
 		}
 
