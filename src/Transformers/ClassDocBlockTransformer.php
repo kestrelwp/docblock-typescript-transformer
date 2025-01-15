@@ -11,8 +11,10 @@ use phpDocumentor\Reflection\TypeResolver;
 use phpDocumentor\Reflection\Types\ContextFactory;
 use phpDocumentor\Reflection\Types\Nullable;
 use ReflectionClass;
+use ReflectionParameter;
 use Spatie\TypeScriptTransformer\Structures\MissingSymbolsCollection;
 use Spatie\TypeScriptTransformer\Transformers\DtoTransformer;
+use Spatie\TypeScriptTransformer\TypeProcessors\TypeProcessor;
 use Spatie\TypeScriptTransformer\TypeScriptTransformerConfig;
 
 /**
@@ -57,14 +59,29 @@ class ClassDocBlockTransformer extends DtoTransformer
 					return $carry;
 				}
 
-				$type          = $this->resolvePropertyType($property);
-				$transformed   = $this->typeToTypeScript($type, $missingSymbols, $nullablesAreOptional, $class->getName());
-				$is_optional   = $this->propertyIsOptional($property) || ($type instanceof Nullable && $nullablesAreOptional);
-				$property_name = $property->getVariableName();
+				$type = $this->propertyToType(
+					$property,
+					$missingSymbols,
+					...$this->typeProcessors()
+				);
 
-				return $is_optional
-					? "{$carry}{$property_name}?: {$transformed};" . PHP_EOL
-					: "{$carry}{$property_name}: {$transformed};" . PHP_EOL;
+				$transformed = $this->typeToTypeScript(
+					$type,
+					$missingSymbols,
+					$nullablesAreOptional,
+					$class->getName()
+				);
+
+				if ($transformed === null) {
+					return $carry;
+				}
+
+				$isOptional   = $this->propertyIsOptional($property) || ($type instanceof Nullable && $nullablesAreOptional);
+				$propertyName = $property->getVariableName();
+
+				return $isOptional
+					? "{$carry}{$propertyName}?: {$transformed};" . PHP_EOL
+					: "{$carry}{$propertyName}: {$transformed};" . PHP_EOL;
 			},
 			''
 		);
@@ -88,7 +105,7 @@ class ClassDocBlockTransformer extends DtoTransformer
 		foreach ($docblock->getTags() as $tag) {
 
 			// only include `@property`, `@property-read`, and `@property-write` tags
-			if (strpos($tag->getName(), 'property') === false) {
+			if (!str_contains($tag->getName(), 'property')) {
 				continue;
 			}
 
@@ -99,12 +116,47 @@ class ClassDocBlockTransformer extends DtoTransformer
 	}
 
 	/**
+	 * Convert the given property to a Type.
+	 *
+	 * @param Property|PropertyRead|PropertyWrite $property
+	 * @param MissingSymbolsCollection $missingSymbolsCollection
+	 * @param TypeProcessor ...$typeProcessors
+	 * @return Type|null
+	 * @throws \ReflectionException
+	 */
+	protected function propertyToType(
+		Property | PropertyRead | PropertyWrite $property,
+		MissingSymbolsCollection $missingSymbolsCollection,
+		TypeProcessor ...$typeProcessors
+	): ?Type {
+		$type = $this->typeResolver->resolve($property->getType());
+
+		// create a dummy reflection object for the processor - it's unused, but required
+		$reflection = new ReflectionParameter('function_exists', 0);
+
+		// using these processors here to ensure default class replacements from config are respected
+		foreach ($typeProcessors as $processor) {
+			$type = $processor->process(
+				$type,
+				$reflection,
+				$missingSymbolsCollection
+			);
+
+			if ($type === null) {
+				return null;
+			}
+		}
+
+		return $type;
+	}
+
+	/**
 	 * Check if the given property should be hidden from TypeScript.
 	 *
 	 * @param Property|PropertyRead|PropertyWrite $property
 	 * @return bool
 	 */
-	protected function propertyIsHidden($property): bool
+	protected function propertyIsHidden(Property | PropertyRead | PropertyWrite $property): bool
 	{
 
 		$description = $property->getDescription();
@@ -124,7 +176,7 @@ class ClassDocBlockTransformer extends DtoTransformer
 	 * @param Property|PropertyRead|PropertyWrite $property
 	 * @return bool
 	 */
-	protected function propertyIsOptional($property): bool
+	protected function propertyIsOptional(Property | PropertyRead | PropertyWrite $property): bool
 	{
 
 		$description = $property->getDescription();
@@ -136,17 +188,6 @@ class ClassDocBlockTransformer extends DtoTransformer
 		}
 
 		return false;
-	}
-
-	/**
-	 * Resolve the type of the given property.
-	 *
-	 * @param Property|PropertyRead|PropertyWrite $property
-	 * @return Type
-	 */
-	protected function resolvePropertyType($property): Type
-	{
-		return $this->typeResolver->resolve($property->getType());
 	}
 
 }
