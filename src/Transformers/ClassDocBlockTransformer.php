@@ -2,6 +2,7 @@
 
 namespace Kestrel\DocblockTypescriptTransformer\Transformers;
 
+use Kestrel\DocblockTypescriptTransformer\DocBlockTags\TypeScriptRecordTag;
 use phpDocumentor\Reflection\DocBlock\Tags\Property;
 use phpDocumentor\Reflection\DocBlock\Tags\PropertyRead;
 use phpDocumentor\Reflection\DocBlock\Tags\PropertyWrite;
@@ -11,11 +12,13 @@ use phpDocumentor\Reflection\TypeResolver;
 use phpDocumentor\Reflection\Types\ContextFactory;
 use phpDocumentor\Reflection\Types\Nullable;
 use ReflectionClass;
+use ReflectionException;
 use ReflectionParameter;
 use Spatie\TypeScriptTransformer\Structures\MissingSymbolsCollection;
 use Spatie\TypeScriptTransformer\Transformers\DtoTransformer;
 use Spatie\TypeScriptTransformer\TypeProcessors\TypeProcessor;
 use Spatie\TypeScriptTransformer\TypeScriptTransformerConfig;
+use Spatie\TypeScriptTransformer\Types\RecordType;
 
 /**
  * A Class/DTO transformer that uses class-level PHPDoc `@property` annotations to generate TypeScript interfaces.
@@ -44,6 +47,7 @@ class ClassDocBlockTransformer extends DtoTransformer
 	 * @param ReflectionClass $class
 	 * @param MissingSymbolsCollection $missingSymbols
 	 * @return string
+	 * @throws ReflectionException
 	 */
 	protected function transformProperties(ReflectionClass $class, MissingSymbolsCollection $missingSymbols): string
 	{
@@ -72,10 +76,6 @@ class ClassDocBlockTransformer extends DtoTransformer
 					$class->getName()
 				);
 
-				if ($transformed === null) {
-					return $carry;
-				}
-
 				$isOptional   = $this->propertyIsOptional($property) || ($type instanceof Nullable && $nullablesAreOptional);
 				$propertyName = $property->getVariableName();
 
@@ -98,6 +98,7 @@ class ClassDocBlockTransformer extends DtoTransformer
 
 		$context  = (new ContextFactory())->createFromReflector($class);
 		$factory  = DocBlockFactory::createInstance();
+		$factory  = DocBlockFactory::createInstance( [ 'ts-record' => TypeScriptRecordTag::class ] );
 		$docblock = $factory->create($class->getDocComment(), $context);
 
 		$properties = [];
@@ -122,14 +123,26 @@ class ClassDocBlockTransformer extends DtoTransformer
 	 * @param MissingSymbolsCollection $missingSymbolsCollection
 	 * @param TypeProcessor ...$typeProcessors
 	 * @return Type|null
-	 * @throws \ReflectionException
+	 * @throws ReflectionException
 	 */
 	protected function propertyToType(
 		Property | PropertyRead | PropertyWrite $property,
 		MissingSymbolsCollection $missingSymbolsCollection,
 		TypeProcessor ...$typeProcessors
 	): ?Type {
-		$type = $this->typeResolver->resolve($property->getType());
+
+		$type        = null;
+		$description = $property->getDescription();
+
+		foreach ( $description->getTags() as $tag ) {
+			if ( $tag instanceof TypeScriptRecordTag ) {
+				$type = new RecordType( $tag->getKeyType(), $tag->getValueType() );
+			}
+		}
+
+		if (!$type) {
+			$type = $this->typeResolver->resolve($property->getType());
+		}
 
 		// create a dummy reflection object for the processor - it's unused, but required
 		$reflection = new ReflectionParameter('function_exists', 0);
